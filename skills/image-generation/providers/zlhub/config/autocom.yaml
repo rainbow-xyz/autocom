@@ -1,0 +1,17 @@
+zlhub:
+  api_base: "https://api.zlhub.cn"
+  # 成本原因默认使用 fast 模型做草稿/批量试跑。
+  model: "doubao-seedance-2.0-fast"
+  # 标准版成本更高，建议只在最终成片时通过 --model 手动启用。
+  # model: "doubao-seedance-2.0"
+  image_model: "doubao-seedream-5.0-lite"
+  callback_url: ""
+  # 为空表示使用 ZLHub 默认分辨率；需要低成本测试时可用 --resolution 480p。
+  default_resolution: ""
+  default_image_size: "1440x2560"
+  default_image_format: "url"
+  default_download_image: true
+  default_ratio: "9:16"
+  default_duration: 8
+  default_generate_audio: true
+  default_watermark: false
