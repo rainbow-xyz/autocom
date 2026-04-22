@@ -13,6 +13,7 @@ secrets/
 # ZLHub runtime outputs may contain signed URLs and generated media.
 outputs/
 dist/
+runs/
 
 # Build artifacts
 /autocom
