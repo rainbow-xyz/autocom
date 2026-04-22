@@ -20,6 +20,7 @@ skills/video-generation/providers/zlhub
 
 ```text
 docs/claw-ops-workspace-convention.md
+docs/paperclip-agent-instructions.md
 skills/content-research
 skills/social-publishing
 skills/image-generation/providers/<other-provider>
@@ -82,6 +83,14 @@ docs/claw-ops-workspace-convention.md
 
 这份规范不作为 skill 安装。它应放进共同 agent instructions 或 onboarding 文档中，各角色 agent 再分别声明自己的输入、输出和交接责任。
 
+可直接放进 Paperclip/OpenClaw agent instructions 的模板见：
+
+```text
+docs/paperclip-agent-instructions.md
+```
+
+建议在所有相关 agent 的公共 instructions 中引用 `docs/claw-ops-workspace-convention.md`，再按角色补充 Coordinator、Research、Creator、Publisher 的职责片段。
+
 ## 使用方式
 
 进入已安装的 `skills/image-generation` 目录后：
@@ -115,6 +124,8 @@ python3 providers/zlhub/scripts/zlhub_cli.py video-get \
   --id cgt-xxx \
   --out-dir outputs/video-001
 ```
+
+复杂工作流不提供固定编排脚本。Agent 应阅读 `skills/video-generation/SKILL.md`，自己用 `zlhub_cli.py`、`curl`、`ffmpeg` 等基础工具拼装流程，并在 job 目录维护 `workflow_state.json`，中断后从状态文件和各 step 的 `task.json` 继续。
 
 ## 敏感信息规则
 

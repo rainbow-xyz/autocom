@@ -25,6 +25,14 @@ providers/zlhub/config/autocom.yaml
 
 Run commands from the installed `image-generation` skill directory, or pass absolute paths.
 
+For Paperclip/OpenClaw jobs, the workspace convention wins:
+
+```text
+runs/YYYY-MM-DD/<job_id>/creation/images/
+```
+
+Examples using `outputs/` are standalone CLI smoke tests only. Do not use `outputs/` as the formal job directory.
+
 ## Environment
 
 Set the API key on the host:
@@ -71,6 +79,14 @@ outputs/physics-poster-001/zlhub/image/
   summary.json
   image_1.jpeg
 ```
+
+For formal jobs, copy or generate selected outputs into `creation/images/`, and register reusable images in:
+
+```text
+runs/YYYY-MM-DD/<job_id>/assets/asset_manifest.json
+```
+
+When a generated image will be used by a video API as `first_frame`, `last_frame`, or `reference_image`, make sure the manifest entry has a reachable `public_url`, `usable_for_api=true`, and a matching `allowed_uses` value.
 
 Use JSON for complex requests:
 

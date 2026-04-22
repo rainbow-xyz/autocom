@@ -22,19 +22,28 @@ role agent instructions   每个角色只写自己的输入、输出和交接责
 YYYYMMDD-topic-slug
 ```
 
+日期目录使用完整日期 `YYYY-MM-DD`，不要只用月份或不完整日期。这样便于按天归档，也能避免跨日期任务混在同一层。
+
 示例：
 
 ```text
-runs/20260422-physics-contest-campaign/
+runs/2026-04-22/20260422-physics-contest-campaign/
 ```
 
 ## 标准目录结构
 
 ```text
-runs/<job_id>/
+runs/YYYY-MM-DD/<job_id>/
   README.md
   brief.md
   state.json
+
+  assets/
+    asset_manifest.json
+    images/
+    videos/
+    audio/
+    documents/
 
   research/
     sources.json
@@ -75,12 +84,116 @@ runs/<job_id>/
 ```json
 {
   "job_id": "20260422-physics-contest-campaign",
+  "run_date": "2026-04-22",
+  "run_dir": "runs/2026-04-22/20260422-physics-contest-campaign",
   "status": "researching",
   "owner": "claw-ops-coordinator",
   "current_stage": "research",
   "updated_at": "2026-04-22T20:00:00+08:00"
 }
 ```
+
+`state.json` 只记录整个 job 的阶段状态。某个子流程的细节状态放在子目录，例如 `creation/videos/workflow_state.json`。下游 agent 恢复工作时先读顶层 `state.json`，再读自己负责目录里的状态文件。
+
+## 状态与重试
+
+涉及外部 API、付费生成、发布平台写入或长耗时任务时，子流程状态文件必须记录每个 step 的重试信息：
+
+```json
+{
+  "id": "main_video",
+  "status": "failed",
+  "action": "zlhub.video-create",
+  "retry_count": 2,
+  "max_retries": 2,
+  "task_id": "",
+  "error": "InvalidParameter: duration is not valid",
+  "updated_at": "2026-04-22T22:00:00+08:00"
+}
+```
+
+重试规则：
+
+```text
+同一个付费 create/generate step 最多失败重试 2 次
+如果已经拿到 task_id，只能继续 query，不能重复 create
+连续 2 次失败后，必须把 step 标记为 failed，并停止自动尝试
+停止后由用户或 Coordinator 决定是否换参数、换模型、降级需求或终止 job
+每次失败都要记录 request_path、response_path、error 和 updated_at
+```
+
+这个限制是成本保护，不是技术限制。Agent 不应为了“自己完成任务”而无限尝试更多时长、模型或素材组合。
+
+## 跨日期查找
+
+如果需要跨日期、跨 job 查找资源，Coordinator 维护 `runs/index.jsonl`。每个 job 一行，记录可搜索摘要和关键产物位置：
+
+```json
+{"job_id":"20260422-physics-contest-campaign","run_date":"2026-04-22","run_dir":"runs/2026-04-22/20260422-physics-contest-campaign","topic":"物理竞赛课程营销","status":"published","assets":["creation/images/poster.jpeg","creation/videos/final/complete.mp4"],"updated_at":"2026-04-22T22:00:00+08:00"}
+```
+
+Agent 查找历史素材时，先读 `runs/index.jsonl`，再进入匹配的 `run_dir` 查看 `state.json`、`creation/` 和 `publish/`。不要为了找资源全量扫描每个 job 的长文本正文。
+
+## 资源规范
+
+跨 agent 可复用资源统一登记到 job 级资源池：
+
+```text
+runs/YYYY-MM-DD/<job_id>/assets/
+  asset_manifest.json
+  images/
+  videos/
+  audio/
+  documents/
+```
+
+`asset_manifest.json` 是资源索引。任何 agent 产出可复用图片、视频、音频、PDF、长文、截图或外部 URL 时，都应追加一条记录：
+
+```json
+[
+  {
+    "asset_id": "img-001",
+    "type": "image",
+    "status": "approved",
+    "local_path": "assets/images/first-frame.png",
+    "public_url": "https://example.com/first-frame.png",
+    "usable_for_api": true,
+    "provider": "zlhub",
+    "source_agent": "creator",
+    "source": "generated",
+    "allowed_uses": ["first_frame", "reference_image", "cover"],
+    "rights": "owned_or_generated",
+    "credit_required": false,
+    "expires_at": "2026-04-23T20:00:00+08:00",
+    "derived_from": [],
+    "notes": "视频首帧候选图"
+  }
+]
+```
+
+资源状态只能使用：
+
+```text
+candidate    候选素材，未确认可用
+approved     已确认可用于创作
+generated    生成产物，待筛选或待处理
+final        最终交付资源
+rejected     禁用，不再使用
+expired      URL 过期，需要重新上传或刷新
+```
+
+传给外部 API 的资源必须满足：
+
+```text
+public_url 非空
+usable_for_api=true
+expires_at 为空或尚未过期
+URL 是公网可访问地址
+不能是 localhost、127.0.0.1、内网地址、需要登录态的地址或 base64
+临时签名 URL 只能保存在本地 runs/，提交仓库前必须清理
+```
+
+跨 agent 使用资源时必须通过 `asset_id` 引用，不要只写模糊文件名。下游 agent 使用资源前必须检查 `status`、`allowed_uses`、`rights`、`public_url`、`usable_for_api` 和 `expires_at`。如果对资源做了裁剪、转码、重新生成或二次创作，应生成新的 `asset_id`，并在 `derived_from` 里记录来源。
 
 ## Research 目录
 
@@ -104,6 +217,8 @@ runs/<job_id>/
 
 `research/assets/` 保存研究阶段下载或整理的参考素材，例如截图、公开图片、PDF、音频、视频链接说明等。
 
+研究阶段资源如果会交给 Creator 使用，必须同步登记到 job 级 `assets/asset_manifest.json`，并在 `handoff/research-to-creator.md` 里引用对应 `asset_id`。
+
 ## Creation 目录
 
 `creation/outline.md` 保存内容结构、镜头脚本、图文大纲或发布系列大纲。
@@ -120,6 +235,8 @@ creation/requests/zlhub-video-main.json
 `creation/images/` 保存生成图、封面、首帧、缩略图和中间图像结果。
 
 `creation/videos/` 保存生成视频、视频任务响应、最终视频链接摘要和本地下载文件。若使用 ZLHub，保留原始 `request.json`、`create_response.json`、`query_response.json` 和 `task.json`。
+
+创作阶段最终可交付资源必须同步登记到 `assets/asset_manifest.json`，并把最终文件放到明确的 `final/` 或 `publish/` 位置，避免 Publisher 从中间文件里猜测应该发布哪个版本。
 
 ## Publish 目录
 
@@ -147,13 +264,17 @@ publish/platform_payloads/bilibili.json
 
 ## 角色责任
 
-Coordinator 负责创建 `runs/<job_id>/`、维护 `brief.md` 和 `state.json`，并检查交接文件是否完整。
+Coordinator 负责创建 `runs/YYYY-MM-DD/<job_id>/`、维护 `brief.md`、`state.json` 和 `runs/index.jsonl`，并检查交接文件与 `assets/asset_manifest.json` 是否完整。
 
-Research 只能写入 `research/` 和 `handoff/research-to-creator.md`，除非 Coordinator 明确要求修改 brief。
+Research 主要写入 `research/` 和 `handoff/research-to-creator.md`。如果产出可复用资源，可以写入 `assets/` 并追加或更新自己产出的 `asset_manifest.json` 记录。除非 Coordinator 明确要求，不要修改 brief。
 
-Creator 主要读取 `brief.md`、`research/` 和 `handoff/research-to-creator.md`，写入 `creation/` 和 `handoff/creator-to-publisher.md`。
+Creator 主要读取 `brief.md`、`research/`、`assets/asset_manifest.json` 和 `handoff/research-to-creator.md`，写入 `creation/`、`handoff/creator-to-publisher.md`，并登记自己产出的可复用资源。
 
-Publisher 主要读取 `brief.md`、`creation/` 和 `handoff/creator-to-publisher.md`，写入 `publish/` 和 `handoff/publisher-report.md`。
+Publisher 主要读取 `brief.md`、`creation/`、`assets/asset_manifest.json` 和 `handoff/creator-to-publisher.md`，写入 `publish/` 和 `handoff/publisher-report.md`。发布成功后可以把已发布最终资源的状态更新为 `final`。
+
+## 目录优先级
+
+目录规范以本文为准。各 skill 只能在本文定义的目录下补充本能力的子目录和文件命名，不能另起一套正式 job 目录。Skill 文档里的 `outputs/` 示例只用于单独 CLI 连通性测试，不用于 Paperclip/OpenClaw 正式 job。
 
 ## 敏感信息
 
