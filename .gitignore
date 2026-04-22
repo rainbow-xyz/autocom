@@ -1,0 +1,33 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+autocom.local.yaml
+*.local.yaml
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+
+# ZLHub runtime outputs may contain signed URLs and generated media.
+outputs/
+dist/
+
+# Build artifacts
+/autocom
+/bin/
+*.test
+coverage.out
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
