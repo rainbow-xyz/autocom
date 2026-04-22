@@ -19,6 +19,7 @@ skills/video-generation/providers/zlhub
 未来可以继续增加：
 
 ```text
+docs/claw-ops-workspace-convention.md
 skills/content-research
 skills/social-publishing
 skills/image-generation/providers/<other-provider>
@@ -65,11 +66,21 @@ skills/
 
 archive/
   go-fallback/              历史 Go 版归档，不作为当前 skill 能力
-  skill-drafts/             历史 skill 草稿归档
+  skill-drafts/             历史 skill 草稿归档；不得保留 SKILL.md
 
 scripts/
   build_paperclip_package.sh
 ```
+
+## 多 Agent 工作区规范
+
+Claw Ops 这类多 agent 协作应使用统一工作区目录，而不是让每个 agent 自己发明路径。当前建议规范见：
+
+```text
+docs/claw-ops-workspace-convention.md
+```
+
+这份规范不作为 skill 安装。它应放进共同 agent instructions 或 onboarding 文档中，各角色 agent 再分别声明自己的输入、输出和交接责任。
 
 ## 使用方式
 
