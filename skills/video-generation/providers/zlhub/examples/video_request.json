@@ -1,0 +1,21 @@
+{
+  "model": "doubao-seedance-2.0-fast",
+  "content": [
+    {
+      "type": "text",
+      "text": "参考图片1生成一段科技资讯短视频，画面节奏明快，适合竖屏平台发布。"
+    },
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "https://example.com/reference.jpg"
+      },
+      "role": "reference_image"
+    }
+  ],
+  "generate_audio": true,
+  "ratio": "9:16",
+  "resolution": "480p",
+  "duration": 8,
+  "watermark": false
+}
