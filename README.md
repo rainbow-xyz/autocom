@@ -19,8 +19,8 @@ skills/video-generation/providers/zlhub
 未来可以继续增加：
 
 ```text
-docs/claw-ops-workspace-convention.md
-docs/paperclip-agent-instructions.md
+docs/paperclip/workspace-convention.md
+docs/paperclip/agent-instructions.md
 skills/content-research
 skills/social-publishing
 skills/image-generation/providers/<other-provider>
@@ -73,42 +73,40 @@ scripts/
   build_paperclip_package.sh
 ```
 
-## 多 Agent 工作区规范
+## Paperclip/OpenClaw 落盘约定
 
-Claw Ops 这类多 agent 协作应使用统一工作区目录，而不是让每个 agent 自己发明路径。当前建议规范见：
+Claw Ops 这类自动化任务只保留一套最小落盘契约：job 放哪里、状态怎么恢复、哪些内容不能泄露。Paperclip/OpenClaw 自带的协作、交接、运行状态和资源管理能力优先；资源索引、research、publish 都按需创建。当前规范见：
 
 ```text
-docs/claw-ops-workspace-convention.md
+docs/paperclip/workspace-convention.md
 ```
 
-这份规范不作为 skill 安装。它应放进共同 agent instructions 或 onboarding 文档中，各角色 agent 再分别声明自己的输入、输出和交接责任。
+这份规范不作为 skill 安装，也不替代 Paperclip/OpenClaw 的编排流程。它应放进共同 instructions 或 onboarding 文档中，只约束落盘、恢复和敏感信息。
 
 可直接放进 Paperclip/OpenClaw agent instructions 的模板见：
 
 ```text
-docs/paperclip-agent-instructions.md
+docs/paperclip/agent-instructions.md
 ```
 
-建议在所有相关 agent 的公共 instructions 中引用 `docs/claw-ops-workspace-convention.md`，再按角色补充 Coordinator、Research、Creator、Publisher 的职责片段。
+建议在相关 instructions 中引用 `docs/paperclip/workspace-convention.md`。不要在本仓库文档里重复定义 Paperclip/OpenClaw 的角色分工或交接流程。
 
 ## 使用方式
 
-进入已安装的 `skills/image-generation` 目录后：
+宿主机需要预先设置 `ZLHUB_API_KEY`。Agent 执行命令时不要把真实 key 写进命令行，也不要使用 `export ... && command` 链式命令；如果执行环境支持 `workdir`，优先用 `workdir`，否则使用绝对路径。
+
+进入已安装的 `skills/image-generation` 目录后，逐条执行：
 
 ```bash
-export ZLHUB_API_KEY="your-zlhub-api-key"
-
 python3 providers/zlhub/scripts/zlhub_cli.py image \
   --config providers/zlhub/config/autocom.yaml \
   --prompt "生成一张物理竞赛课程海报" \
   --out-dir outputs/poster-001
 ```
 
-进入已安装的 `skills/video-generation` 目录后：
+进入已安装的 `skills/video-generation` 目录后，逐条执行：
 
 ```bash
-export ZLHUB_API_KEY="your-zlhub-api-key"
-
 python3 providers/zlhub/scripts/zlhub_cli.py video-create \
   --config providers/zlhub/config/autocom.yaml \
   --prompt "生成一段 4 秒物理竞赛课程营销短视频" \
@@ -125,7 +123,7 @@ python3 providers/zlhub/scripts/zlhub_cli.py video-get \
   --out-dir outputs/video-001
 ```
 
-复杂工作流不提供固定编排脚本。Agent 应阅读 `skills/video-generation/SKILL.md`，自己用 `zlhub_cli.py`、`curl`、`ffmpeg` 等基础工具拼装流程，并在 job 目录维护 `workflow_state.json`，中断后从状态文件和各 step 的 `task.json` 继续。
+复杂生成流程不提供固定编排脚本。按 Paperclip/OpenClaw 平台流程和 `skills/video-generation/SKILL.md` 调用 `zlhub_cli.py`、`curl`、`ffmpeg` 等基础工具。需要续接时维护 `workflow_state.json`，中断后从状态文件和各 step 的 `task.json` 继续。
 
 ## 敏感信息规则
 
@@ -136,9 +134,10 @@ python3 providers/zlhub/scripts/zlhub_cli.py video-get \
 
 ## 验证与打包
 
+逐条执行：
+
 ```bash
 python3 -m unittest discover -s skills/image-generation/providers/zlhub/scripts -p 'test_*.py'
 python3 -m unittest discover -s skills/video-generation/providers/zlhub/scripts -p 'test_*.py'
-
 scripts/build_paperclip_package.sh
 ```

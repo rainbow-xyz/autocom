@@ -5,74 +5,38 @@ description: Generate images for content production, marketing assets, covers, p
 
 # Image Generation
 
-Use this skill when an agent needs to generate images, covers, posters, thumbnails, first-frame assets, or visual references for downstream content/video workflows.
+用于生成海报、封面、缩略图、视频首帧或参考图。当前 provider 是 ZLHub Seedream。
 
-Current provider:
+## 准备
 
-```text
-ZLHub Seedream
-```
+宿主机必须预先提供环境变量 `ZLHUB_API_KEY`。在普通 shell 中可以用 `export ZLHUB_API_KEY="your-zlhub-api-key"` 设置，但 agent 执行任务时不要把真实 key 写进命令行，也不要使用 `export ... && command` 链式命令。
 
-ZLHub is a provider under this business skill. Future image providers should be added under `providers/<provider-name>/`.
+如果运行时发现 `ZLHUB_API_KEY` 缺失，停止并提示用户在宿主机环境设置。不要把 key 写入配置、请求、日志或最终回答。
 
-## Files
+相关文件：
 
 ```text
 providers/zlhub/scripts/zlhub_cli.py
-providers/zlhub/examples/image_request.json
 providers/zlhub/config/autocom.yaml
+providers/zlhub/examples/image_request.json
 ```
 
-Run commands from the installed `image-generation` skill directory, or pass absolute paths.
+执行命令时：
 
-## Environment
+- 从已安装的 `image-generation` skill 目录运行，或使用绝对路径。
+- 能设置 `workdir` 时，用 `workdir`，不要写 `cd ... && command`。
+- 如果 preflight 拒绝链式命令，拆成单步命令执行。
 
-Set the API key on the host:
-
-```bash
-export ZLHUB_API_KEY="your-zlhub-api-key"
-```
-
-Never write real keys into config, examples, requests, logs, output summaries, or final answers.
-
-## Generate Image
-
-Default provider/model:
-
-```text
-provider: ZLHub
-model: doubao-seedream-5.0-lite
-size: 1440x2560
-response_format: url
-watermark: false
-```
-
-Command:
+## 生成图片
 
 ```bash
 python3 providers/zlhub/scripts/zlhub_cli.py image \
   --config providers/zlhub/config/autocom.yaml \
-  --prompt "生成一张竖屏物理竞赛课程营销海报，真实高级教育广告质感。画面中心是一名专注思考的高中生，背景是黑板上的力学和电磁学公式。底部留白用于后期添加 logo 和二维码。" \
+  --prompt "生成一张竖屏物理竞赛课程营销海报，真实高级教育广告质感。" \
   --out-dir outputs/physics-poster-001
 ```
 
-This calls:
-
-```text
-POST /v1/images/generations
-```
-
-Outputs:
-
-```text
-outputs/physics-poster-001/zlhub/image/
-  request.json
-  response.json
-  summary.json
-  image_1.jpeg
-```
-
-Use JSON for complex requests:
+复杂请求用 JSON：
 
 ```bash
 python3 providers/zlhub/scripts/zlhub_cli.py image \
@@ -81,24 +45,37 @@ python3 providers/zlhub/scripts/zlhub_cli.py image \
   --out-dir outputs/physics-poster-001
 ```
 
-Disable download when only the returned URL is needed:
+输出位置：
 
-```bash
-python3 providers/zlhub/scripts/zlhub_cli.py image \
-  --config providers/zlhub/config/autocom.yaml \
-  --prompt "生成一张课程海报" \
-  --download=false \
-  --out-dir outputs/image-test
+```text
+<out-dir>/zlhub/image/
+  request.json
+  response.json
+  summary.json
+  image_1.jpeg
 ```
 
-## Constraints And Cost
+## 默认参数
 
-- `doubao-seedream-5.0-lite` is the default low-cost image model.
-- Observed ZLHub price: `¥0.22 / image`.
-- Use `1440x2560` for 9:16 because `1024x1792` was rejected for not meeting the minimum `3686400` pixels.
-- `X-Trace-ID` must be exactly 32 characters; the CLI auto-generates a valid value.
+```text
+model: doubao-seedream-5.0-lite
+size: 1440x2560
+response_format: url
+watermark: false
+```
 
-## Safety
+已观察价格：`doubao-seedream-5.0-lite` 约 `¥0.22 / image`。
 
-- Do not commit `outputs/`; it may contain signed URLs and generated media.
-- Do not include API keys or signed media URLs in final answers.
+## 给视频使用
+
+如果图片要传给视频接口作为 `first_frame`、`last_frame` 或 `reference_image`：
+
+- 必须有公网可访问 `public_url`。
+- 不能传本地路径、localhost、内网地址、登录态 URL 或 base64。
+- 如果图片会被其它流程复用或发布，再登记到 `runs/YYYY-MM-DD/<job_id>/assets/asset_manifest.json`。
+
+`outputs/` 只用于 CLI 测试；正式 job 使用 `runs/YYYY-MM-DD/<job_id>/creation/images/`。
+
+## 安全
+
+不要提交 `outputs/`、`runs/`、真实 API Key、签名 URL 或生成媒体文件。
