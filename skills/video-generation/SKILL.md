@@ -5,13 +5,11 @@ description: Create and query asynchronous video generation tasks for content pr
 
 # Video Generation
 
-用于创建和查询异步视频生成任务，支持文生视频、首尾帧、参考图片、参考视频、参考音频。当前 provider 是 ZLHub Seedance。
+用于创建和查询异步视频生成任务。当前 provider 是 ZLHub Seedance。
 
 ## 准备
 
-宿主机必须预先提供环境变量 `ZLHUB_API_KEY`。在普通 shell 中可以用 `export ZLHUB_API_KEY="your-zlhub-api-key"` 设置，但 agent 执行任务时不要把真实 key 写进命令行，也不要使用 `export ... && command` 链式命令。
-
-如果运行时发现 `ZLHUB_API_KEY` 缺失，停止并提示用户在宿主机环境设置。不要把 key 写入配置、请求、日志或最终回答。
+宿主机必须预先提供环境变量 `ZLHUB_API_KEY`。不要把真实 key 写进命令行、配置、请求、日志或最终回答。
 
 相关文件：
 
@@ -25,8 +23,7 @@ providers/zlhub/examples/video_request.json
 
 - 从已安装的 `video-generation` skill 目录运行，或使用绝对路径。
 - 能设置 `workdir` 时，用 `workdir`，不要写 `cd ... && command`。
-- 如果 preflight 拒绝链式命令，拆成单步命令执行。
-- 下载、查询、拼接视频分开执行，不要把 `curl`、变量解析和 `ffmpeg` 串成一条命令。
+- 如果 preflight 拒绝链式命令，拆成单步执行。
 
 ## 创建任务
 
@@ -62,19 +59,7 @@ python3 providers/zlhub/scripts/zlhub_cli.py video-create \
 --audio role=url
 ```
 
-示例：
-
-```bash
-python3 providers/zlhub/scripts/zlhub_cli.py video-create \
-  --config providers/zlhub/config/autocom.yaml \
-  --prompt "以图片1作为首帧，参考视频1的镜头运动，生成 4 秒竖屏视频。" \
-  --image first_frame=https://example.com/first.jpg \
-  --video reference_video=https://example.com/ref.mp4 \
-  --ratio 9:16 \
-  --resolution 480p \
-  --duration 4 \
-  --out-dir outputs/video-assets-001
-```
+素材只能传公网 URL，不能传本地路径、localhost、内网地址、登录态 URL 或 base64。提示词中用 `图片1`、`视频1`、`音频1` 这类序号引用素材。
 
 请求会调用：
 
@@ -109,44 +94,40 @@ GET /v1/task/get/{id}
   task.json
 ```
 
-`task.json` 会保存 `task_id`、`status`、`video_url`、`error`、`updated_at`。`status=succeeded` 后及时下载 `video_url`，因为通常是临时签名 URL。
+`task.json` 会保存 `task_id`、`status`、`video_url`、`error`、`updated_at`。
 
-不要频繁轮询。真实任务无 callback 时，建议创建约 10 分钟后查询；同一任务最多每分钟查一次。
+任务成功后及时下载 `video_url`，因为通常是临时签名 URL。不要频繁轮询；真实任务无 callback 时，建议创建约 10 分钟后查询，同一任务最多每分钟查一次。
 
-## 素材和提示词
+## 简单流程
 
-传给 ZLHub 的图片、视频、音频必须是公网可访问 URL；不能是本地路径、localhost、内网地址、登录态 URL 或 base64。
-
-提示词引用素材时用同类素材序号：
+单视频：
 
 ```text
-图片1、图片2、视频1、音频1
+create -> query -> download video_url -> final
 ```
 
-正式 Paperclip job 中，如果素材会被其它流程复用、传给外部 API、或用于发布，再登记到：
+续写或多段视频：
 
 ```text
-runs/YYYY-MM-DD/<job_id>/assets/asset_manifest.json
+query 上一段拿到 video_url -> 用 --video reference_video=<video_url> 创建下一段 -> 下载 -> ffmpeg 拼接
 ```
 
-使用前至少检查 `status`、`rights`、`public_url`、`usable_for_api`。
+需要恢复时只记住两件事：
 
-## 恢复与多步任务
+- 已有 `task_id` 就继续 query，不要重复 create。
+- 同一个付费 create/generate 失败最多重试 2 次。
 
-这里不定义固定编排流程。按 `brief.md` 和平台流程决定步骤，只要保证可恢复：
+正式 job 建议输出到：
 
-- 正式 job 使用 `runs/YYYY-MM-DD/<job_id>/creation/videos/`，不要用 `outputs/`。
-- 长流程维护 `creation/videos/workflow_state.json`。
-- 已经拿到 `task_id` 时继续 query，不要重复 create。
-- 同一个付费 create/generate step 失败最多重试 2 次；失败 2 次后停止并记录错误。
-- 单视频只需要 `main/` 和 `final/`；多段或续写时再创建 `segments/`、`extensions/`。
+```text
+runs/YYYY-MM-DD/<job_id>/outputs/videos/
+```
 
-续写视频的核心做法：
+简单测试可以继续用：
 
-1. 查询上一个任务，拿到 `video_url`。
-2. 用 `--video reference_video=<video_url>` 创建下一段。
-3. 下载所有段落。
-4. 用 `ffmpeg` 拼接本地文件。
+```text
+outputs/<name>/
+```
 
 ## 成本和限制
 
