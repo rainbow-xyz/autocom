@@ -72,9 +72,8 @@ watermark: false
 
 - 必须有公网可访问 `public_url`。
 - 不能传本地路径、localhost、内网地址、登录态 URL 或 base64。
-- 如果图片会被其它流程复用或发布，再登记到 `runs/YYYY-MM-DD/<job_id>/assets/asset_manifest.json`。
 
-`outputs/` 只用于 CLI 测试；正式 job 使用 `runs/YYYY-MM-DD/<job_id>/creation/images/`。
+正式 job 建议把图片放到 `runs/YYYY-MM-DD/<job_id>/outputs/images/`。简单测试可以继续用 `outputs/<name>/`。
 
 ## 安全
 
