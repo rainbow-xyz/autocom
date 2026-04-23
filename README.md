@@ -75,13 +75,13 @@ scripts/
 
 ## Paperclip/OpenClaw 落盘约定
 
-Claw Ops 这类自动化任务只保留一套最小落盘契约：job 放哪里、状态怎么恢复、哪些内容不能泄露。Paperclip/OpenClaw 自带的协作、交接、运行状态和资源管理能力优先；资源索引、research、publish 都按需创建。当前规范见：
+autocom 只保留单 agent 最小落盘约定：job 放哪里、如何恢复、哪些内容不能泄露。它不定义角色、不定义交接、不替代 Paperclip/OpenClaw 的编排能力。当前规范见：
 
 ```text
 docs/paperclip/workspace-convention.md
 ```
 
-这份规范不作为 skill 安装，也不替代 Paperclip/OpenClaw 的编排流程。它应放进共同 instructions 或 onboarding 文档中，只约束落盘、恢复和敏感信息。
+这份规范不作为 skill 安装。它应放进 instructions 或 onboarding 文档中，只约束落盘、恢复和敏感信息。
 
 可直接放进 Paperclip/OpenClaw agent instructions 的模板见：
 
@@ -89,7 +89,7 @@ docs/paperclip/workspace-convention.md
 docs/paperclip/agent-instructions.md
 ```
 
-建议在相关 instructions 中引用 `docs/paperclip/workspace-convention.md`。不要在本仓库文档里重复定义 Paperclip/OpenClaw 的角色分工或交接流程。
+建议在相关 instructions 中引用 `docs/paperclip/workspace-convention.md`。如果 Paperclip/OpenClaw 要拆分子 agent，让平台自己处理；autocom 不额外定义协作流程。
 
 ## 使用方式
 
@@ -123,7 +123,7 @@ python3 providers/zlhub/scripts/zlhub_cli.py video-get \
   --out-dir outputs/video-001
 ```
 
-复杂生成流程不提供固定编排脚本。按 Paperclip/OpenClaw 平台流程和 `skills/video-generation/SKILL.md` 调用 `zlhub_cli.py`、`curl`、`ffmpeg` 等基础工具。需要续接时维护 `workflow_state.json`，中断后从状态文件和各 step 的 `task.json` 继续。
+复杂生成流程不提供固定编排脚本。按 `skills/video-generation/SKILL.md` 调用 `zlhub_cli.py`、`curl`、`ffmpeg` 等基础工具。需要续接时从 `state.json` 和各 step 的 `task.json` 继续。
 
 ## 敏感信息规则
 
